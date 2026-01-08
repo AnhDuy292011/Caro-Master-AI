@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Caro Master AI</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+      }
+    </script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel để biên dịch JSX ngay tại trình duyệt -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+      body {
+        font-family: 'Inter', sans-serif;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "clsx": "https://esm.sh/clsx@^2.1.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-slate-50 text-slate-900 transition-colors duration-200">
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="typescript,react">
+      const { useState, useEffect, useCallback, memo } = React;
+
+      // --- UTILS: CLSX Polyfill ---
+      function clsx(...args) {
+        const classes = [];
+        args.forEach(arg => {
+          if (!arg) return;
+          if (typeof arg === 'string') classes.push(arg);
+        });
+        return classes.join(' ');
+      }
+
+      // --- ICONS ---
+      const IconWrapper = ({ children, className, ...props }) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
+      );
+      // FIXED: XIcon path coordinates
+      const XIcon = (props) => <IconWrapper {...props}><path d="M18 6 6 18"/><path d="M6 6 18 18"/></IconWrapper>;
+      const CircleIcon = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="10"/></IconWrapper>;
+      const LayoutGrid = (props) => <IconWrapper {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></IconWrapper>;
+      const Sun = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></IconWrapper>;
+      const Moon = (props) => <IconWrapper {...props}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></IconWrapper>;
+      const User = (props) => <IconWrapper {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconWrapper>;
+      const Cpu = (props) => <IconWrapper {...props}><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></IconWrapper>;
+      const RefreshCcw = (props) => <IconWrapper {...props}><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></IconWrapper>;
+      const RefreshCw = (props) => <IconWrapper {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconWrapper>;
+      const Trophy = (props) => <IconWrapper {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></IconWrapper>;
+      const AlertTriangle = (props) => <IconWrapper {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></IconWrapper>;
+
+      // --- CONSTANTS ---
+      const BOARD_SIZE = 15;
+      const WIN_STREAK = 5;
+      const Player = { X: 'X', O: 'O' };
+      const HUMAN_PLAYER = Player.X;
+      const BOT_PLAYER = Player.O;
+      const DELAY_BOT_MOVE_MS = 600;
+
+      // --- LOGIC ---
+      const DIRECTIONS = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+      const checkWin = (board, lastMove, player) => {
+        if (!lastMove) return null;
+        const { row, col } = lastMove;
+        for (const [dr, dc] of DIRECTIONS) {
+          let count = 1;
+          let winningCells = [{ row, col }];
+          
+          for (let i = 1; i < WIN_STREAK; i++) {
+            const r = row + dr * i, c = col + dc * i;
+            if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+              count++;
+              winningCells.push({ row: r, col: c });
+            } else break;
+          }
+          
+          for (let i = 1; i < WIN_STREAK; i++) {
+            const r = row - dr * i, c = col - dc * i;
+            if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] === player) {
+              count++;
+              winningCells.push({ row: r, col: c });
+            } else break;
+          }
+
+          if (count >= WIN_STREAK) return winningCells;
+        }
+        return null;
+      };
+
+      const getCandidateMoves = (board) => {
+        const candidates = new Set();
+        const isEmptyBoard = board.every(row => row.every(cell => cell === null));
+        if (isEmptyBoard) return [{ row: Math.floor(BOARD_SIZE / 2), col: Math.floor(BOARD_SIZE / 2) }];
+
+        for (let r = 0; r < BOARD_SIZE; r++) {
+          for (let c = 0; c < BOARD_SIZE; c++) {
+            if (board[r][c] !== null) {
+              for (let dr = -2; dr <= 2; dr++) {
+                for (let dc = -2; dc <= 2; dc++) {
+                  if (dr === 0 && dc === 0) continue;
+                  const nr = r + dr, nc = c + dc;
+                  if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && board[nr][nc] === null) {
+                    candidates.add(`${nr},${nc}`);
+                  }
+                }
+              }
+            }
+          }
+        }
+        return Array.from(candidates).map(str => {
+          const [r, c] = str.split(',').map(Number);
+          return { row: r, col: c };
+        });
+      };
+
+      const evaluatePosition = (board, r, c, player) => {
+        let totalScore = 0;
+        for (const [dr, dc] of DIRECTIONS) {
+          let consecutive = 0, openEnds = 0;
+          for (let i = 1; i < 5; i++) {
+            const nr = r + dr * i, nc = c + dc * i;
+            if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+            if (board[nr][nc] === player) consecutive++;
+            else if (board[nr][nc] === null) { openEnds++; break; }
+            else break;
+          }
+          for (let i = 1; i < 5; i++) {
+            const nr = r - dr * i, nc = c - dc * i;
+            if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+            if (board[nr][nc] === player) consecutive++;
+            else if (board[nr][nc] === null) { openEnds++; break; }
+            else break;
+          }
+          if (consecutive >= 4) totalScore += 100000;
+          else if (consecutive === 3 && openEnds === 2) totalScore += 10000;
+          else if (consecutive === 3 && openEnds === 1) totalScore += 1000;
+          else if (consecutive === 2 && openEnds === 2) totalScore += 500;
+          else if (consecutive === 2 && openEnds === 1) totalScore += 100;
+          else if (consecutive === 1 && openEnds === 2) totalScore += 50;
+          else if (consecutive === 1 && openEnds === 1) totalScore += 10;
+        }
+        return totalScore;
+      };
+
+      const getBestMove = (board) => {
+        const candidates = getCandidateMoves(board);
+        let bestScore = -Infinity;
+        let bestMove = candidates[0];
+        if (candidates.length === 0) return { row: Math.floor(BOARD_SIZE / 2), col: Math.floor(BOARD_SIZE / 2) };
+
+        for (const move of candidates) {
+          const { row, col } = move;
+          const attackScore = evaluatePosition(board, row, col, BOT_PLAYER);
+          const defenseScore = evaluatePosition(board, row, col, HUMAN_PLAYER);
+          let currentScore = 0;
+          
+          if (attackScore >= 100000) currentScore = Infinity;
+          else if (defenseScore >= 100000) currentScore = 500000;
+          else if (attackScore >= 10000) currentScore = 100000;
+          else if (defenseScore >= 10000) currentScore = 50000;
+          else currentScore = attackScore + defenseScore * 1.1;
+
+          if (currentScore > bestScore) {
+            bestScore = currentScore;
+            bestMove = move;
+          }
+        }
+        return bestMove;
+      };
+
+      // --- COMPONENTS ---
+
+      const Cell = memo(({ row, col, value, onClick, isLastMove, isWinningCell, disabled }) => {
+        return (
+          <button
+            onClick={() => onClick(row, col)}
+            disabled={disabled || value !== null}
+            className={clsx(
+              "w-6 h-6 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10",
+              "border flex items-center justify-center transition-all duration-200 relative",
+              "border-slate-300 hover:bg-slate-100",
+              "dark:border-slate-600 dark:hover:bg-slate-700",
+              "focus:outline-none touch-manipulation",
+              isWinningCell && "bg-green-100 dark:bg-green-900/40",
+              !isWinningCell && isLastMove && "bg-slate-200 dark:bg-slate-600",
+              value === null && !disabled && "cursor-pointer",
+              (value !== null || disabled) && "cursor-default"
+            )}
+          >
+            {isLastMove && !isWinningCell && (
+              <span className="absolute inset-0 border-2 border-slate-400 opacity-50 pointer-events-none animate-pulse"></span>
+            )}
+            {value === Player.X && (
+              <XIcon className={clsx("w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6", isWinningCell ? "text-green-600 dark:text-green-400" : "text-red-500")} strokeWidth={2.5} />
+            )}
+            {value === Player.O && (
+              <CircleIcon className={clsx("w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5", isWinningCell ? "text-green-600 dark:text-green-400" : "text-blue-500")} strokeWidth={3} />
+            )}
+          </button>
+        );
+      });
+
+      const Board = ({ board, onCellClick, lastMove, winningCells, isBotTurn, isGameOver }) => {
+        const isWinning = (r, c) => winningCells?.some(pos => pos.row === r && pos.col === c) ?? false;
+        const isLast = (r, c) => lastMove?.row === r && lastMove?.col === c;
+
+        return (
+          <div className="relative inline-block bg-white dark:bg-slate-800 p-1 sm:p-3 md:p-4 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 transition-colors duration-200">
+            <div className="flex flex-col border border-slate-800 dark:border-slate-900 bg-slate-50 dark:bg-slate-800">
+              {board.map((row, rIndex) => (
+                <div key={rIndex} className="flex">
+                  {row.map((cell, cIndex) => (
+                    <Cell
+                      key={`${rIndex}-${cIndex}`}
+                      row={rIndex}
+                      col={cIndex}
+                      value={cell}
+                      onClick={onCellClick}
+                      isLastMove={isLast(rIndex, cIndex)}
+                      isWinningCell={isWinning(rIndex, cIndex)}
+                      disabled={isGameOver || isBotTurn}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      };
+
+      const GameControls = ({ currentPlayer, stats, onReset, isDarkMode, onToggleTheme }) => {
+        return (
+          <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-72">
+            <div className="flex justify-between items-center lg:justify-end">
+              <span className="lg:hidden text-sm font-semibold text-slate-400 uppercase tracking-wider">Cài đặt</span>
+              <button 
+                onClick={onToggleTheme}
+                className="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+              >
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 transition-colors">
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 sm:mb-4">Lượt đi hiện tại</h3>
+              <div className="flex items-center justify-between gap-2">
+                <div className={`flex-1 flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors ${currentPlayer === HUMAN_PLAYER ? 'bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800' : 'opacity-50'}`}>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center text-red-600 dark:text-red-400"><User className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                  <div className="min-w-0"><p className="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200 truncate">Bạn</p><p className="text-[10px] sm:text-xs text-red-600 dark:text-red-400 font-medium">Player X</p></div>
+                </div>
+                <div className={`flex-1 flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors ${currentPlayer !== HUMAN_PLAYER ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800' : 'opacity-50'}`}>
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400"><Cpu className="w-5 h-5 sm:w-6 sm:h-6" /></div>
+                  <div className="min-w-0"><p className="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-200 truncate">Robot</p><p className="text-[10px] sm:text-xs text-blue-600 dark:text-blue-400 font-medium">Player O</p></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 flex-1 transition-colors">
+              <h3 className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 sm:mb-4">Thống kê</h3>
+              <div className="grid grid-cols-3 lg:grid-cols-1 gap-4 lg:gap-0 lg:space-y-4 text-center lg:text-left">
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center lg:border-b border-slate-100 dark:border-slate-700 lg:pb-2">
+                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">Bạn thắng</span>
+                      <span className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">{stats.wins}</span>
+                  </div>
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center lg:border-b border-slate-100 dark:border-slate-700 lg:pb-2">
+                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">Robot thắng</span>
+                      <span className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">{stats.losses}</span>
+                  </div>
+                  <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center lg:pb-2">
+                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">Hòa</span>
+                      <span className="text-lg sm:text-xl font-bold text-slate-500 dark:text-slate-400">{stats.draws}</span>
+                  </div>
+              </div>
+            </div>
+
+            <button onClick={onReset} className="w-full py-3 sm:py-4 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-xl font-semibold shadow-lg shadow-slate-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base">
+              <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" /> Ván mới
+            </button>
+            <div className="text-center text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1 sm:mt-2">Caro Master AI v1.2</div>
+          </div>
+        );
+      };
+
+      const WinnerModal = ({ winner, onReset, isOpen }) => {
+        if (!isOpen) return null;
+        const isHumanWin = winner === HUMAN_PLAYER;
+        const isDraw = winner === 'DRAW';
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center transform transition-all scale-100 border dark:border-slate-700">
+              <div className="flex justify-center mb-4">
+                  {isDraw ? <div className="p-4 bg-gray-100 dark:bg-slate-700 rounded-full"><AlertTriangle className="w-10 h-10 text-gray-500 dark:text-gray-400" /></div> : 
+                  isHumanWin ? <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 rounded-full animate-bounce"><Trophy className="w-10 h-10 text-yellow-600 dark:text-yellow-400" /></div> : 
+                  <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full"><Trophy className="w-10 h-10 text-blue-600 dark:text-blue-400" /></div>}
+              </div>
+              <h2 className="text-2xl font-bold mb-2 text-slate-800 dark:text-white">{isDraw ? "Hòa!" : isHumanWin ? "Bạn đã thắng!" : "Robot đã thắng!"}</h2>
+              <p className="text-slate-600 dark:text-slate-300 mb-6">{isDraw ? "Một ván đấu căng thẳng!" : isHumanWin ? "Tuyệt vời! Chiến thuật của bạn rất sắc bén." : "Đừng nản lòng, hãy thử lại!"}</p>
+              <button onClick={onReset} className="w-full py-3 px-6 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"><RefreshCw className="w-5 h-5" /> Chơi ván mới</button>
+            </div>
+          </div>
+        );
+      };
+
+      // --- APP ---
+      const createEmptyBoard = () => Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null));
+
+      const App = () => {
+        const [board, setBoard] = useState(createEmptyBoard());
+        const [currentPlayer, setCurrentPlayer] = useState(HUMAN_PLAYER);
+        const [winner, setWinner] = useState(null);
+        const [winningCells, setWinningCells] = useState(null);
+        const [lastMove, setLastMove] = useState(null);
+        const [isBotThinking, setIsBotThinking] = useState(false);
+        const [stats, setStats] = useState({ wins: 0, losses: 0, draws: 0 });
+        const [isDarkMode, setIsDarkMode] = useState(false);
+
+        const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
+        const resetGame = useCallback(() => {
+          setBoard(createEmptyBoard());
+          setCurrentPlayer(HUMAN_PLAYER);
+          setWinner(null);
+          setWinningCells(null);
+          setLastMove(null);
+          setIsBotThinking(false);
+        }, []);
+
+        const handleWin = useCallback((player, cells) => {
+          setWinner(player);
+          if (cells) setWinningCells(cells);
+          setStats(prev => {
+              if (player === HUMAN_PLAYER) return { ...prev, wins: prev.wins + 1 };
+              if (player === BOT_PLAYER) return { ...prev, losses: prev.losses + 1 };
+              return { ...prev, draws: prev.draws + 1 };
+          });
+        }, []);
+
+        // REFACTORED: Clean handleMove without side-effects in state updater
+        const handleMove = useCallback((row, col, player) => {
+          // 1. Create new board
+          const newBoard = board.map(r => [...r]);
+          newBoard[row][col] = player;
+          
+          // 2. Update state
+          setBoard(newBoard);
+          setLastMove({ row, col });
+
+          // 3. Check win logic on the new board
+          const winPath = checkWin(newBoard, { row, col }, player);
+          if (winPath) {
+            handleWin(player, winPath);
+          } else {
+              const isDraw = newBoard.every(r => r.every(c => c !== null));
+              if (isDraw) handleWin('DRAW');
+              else setCurrentPlayer(player === Player.X ? Player.O : Player.X);
+          }
+        }, [board, handleWin]);
+
+        const onHumanClick = (row, col) => {
+          if (winner || isBotThinking || board[row][col] !== null || currentPlayer !== HUMAN_PLAYER) return;
+          handleMove(row, col, HUMAN_PLAYER);
+        };
+
+        useEffect(() => {
+          if (currentPlayer === BOT_PLAYER && !winner) {
+            setIsBotThinking(true);
+            const timer = setTimeout(() => {
+              const bestMove = getBestMove(board);
+              handleMove(bestMove.row, bestMove.col, BOT_PLAYER);
+              setIsBotThinking(false);
+            }, DELAY_BOT_MOVE_MS);
+            return () => clearTimeout(timer);
+          }
+        }, [currentPlayer, winner, board, handleMove]);
+
+        return (
+          <div className={clsx(isDarkMode && "dark")}>
+            <div className="min-h-[100dvh] bg-slate-50 dark:bg-slate-900 flex flex-col items-center py-4 sm:py-6 md:py-8 px-2 sm:px-4 font-sans transition-colors duration-200">
+              <div className="text-center mb-4 sm:mb-8">
+                <div className="inline-flex items-center justify-center p-2 sm:p-3 bg-blue-600 dark:bg-blue-700 rounded-2xl shadow-lg shadow-blue-200 dark:shadow-none mb-2 sm:mb-4"><LayoutGrid className="w-6 h-6 sm:w-8 sm:h-8 text-white" /></div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">Caro Master AI</h1>
+                <p className="text-slate-500 dark:text-slate-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base max-w-md mx-auto px-4">Thách đấu trí tuệ nhân tạo trên bàn cờ 15x15.</p>
+              </div>
+              <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8 items-center lg:items-start justify-center w-full max-w-6xl">
+                <div className="flex-1 w-full flex justify-center order-1 lg:order-1 overflow-x-auto overflow-y-hidden pb-2 lg:pb-0 scrollbar-hide">
+                    <div className="min-w-fit px-1"><Board board={board} onCellClick={onHumanClick} lastMove={lastMove} winningCells={winningCells} isBotTurn={isBotThinking} isGameOver={!!winner} /></div>
+                </div>
+                <div className="w-full max-w-md lg:w-auto order-2 lg:order-2 flex justify-center px-2 sm:px-0"><GameControls currentPlayer={currentPlayer} stats={stats} onReset={resetGame} isDarkMode={isDarkMode} onToggleTheme={toggleTheme} /></div>
+              </div>
+              <WinnerModal isOpen={!!winner} winner={winner} onReset={resetGame} />
+            </div>
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

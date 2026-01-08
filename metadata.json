@@ -1,0 +1,5 @@
+{
+  "name": "Caro Master AI",
+  "description": "Trò chơi Caro (Gomoku) cổ điển với tích hợp trí tuệ nhân tạo (AI) chạy trực tiếp trên trình duyệt. Thách thức khả năng tư duy chiến thuật của bạn trên bàn cờ 15x15.",
+  "requestFramePermissions": []
+}
