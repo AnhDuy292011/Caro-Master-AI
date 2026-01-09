@@ -39,21 +39,20 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "clsx": "https://esm.sh/clsx@^2.1.1"
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body class="bg-slate-50 text-slate-900 transition-colors duration-200">
     <div id="root"></div>
 
     <script type="text/babel" data-presets="typescript,react">
-      const { useState, useEffect, useCallback, memo } = React;
+      const { useState, useEffect, useCallback, memo, useRef } = React;
 
       // --- UTILS: CLSX Polyfill ---
       function clsx(...args) {
@@ -65,11 +64,78 @@
         return classes.join(' ');
       }
 
+      // --- SOUND ENGINE (Web Audio API) ---
+      const audioCtxRef = { current: null };
+
+      const initAudio = () => {
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtxRef.current.state === 'suspended') {
+          audioCtxRef.current.resume();
+        }
+        return audioCtxRef.current;
+      };
+
+      const playSound = (type) => {
+        const ctx = initAudio();
+        const osc = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+
+        osc.connect(gainNode);
+        gainNode.connect(ctx.destination);
+
+        const now = ctx.currentTime;
+
+        if (type === 'MOVE_X') {
+          // Âm thanh sắc, cao cho X (giống tiếng gõ nhẹ)
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+          
+          gainNode.gain.setValueAtTime(0.3, now);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+          
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'MOVE_O') {
+          // Âm thanh trầm, ấm hơn cho O
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(50, now + 0.15);
+          
+          gainNode.gain.setValueAtTime(0.3, now);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'WIN') {
+          // Hợp âm chiến thắng
+          const notes = [523.25, 659.25, 783.99, 1046.50]; // C Major
+          notes.forEach((freq, i) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g);
+            g.connect(ctx.destination);
+            
+            const start = now + i * 0.1;
+            o.frequency.value = freq;
+            o.type = 'sine';
+            
+            g.gain.setValueAtTime(0, start);
+            g.gain.linearRampToValueAtTime(0.2, start + 0.05);
+            g.gain.exponentialRampToValueAtTime(0.01, start + 0.5);
+            
+            o.start(start);
+            o.stop(start + 0.5);
+          });
+        }
+      };
+
       // --- ICONS ---
       const IconWrapper = ({ children, className, ...props }) => (
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{children}</svg>
       );
-      // FIXED: XIcon path coordinates
       const XIcon = (props) => <IconWrapper {...props}><path d="M18 6 6 18"/><path d="M6 6 18 18"/></IconWrapper>;
       const CircleIcon = (props) => <IconWrapper {...props}><circle cx="12" cy="12" r="10"/></IconWrapper>;
       const LayoutGrid = (props) => <IconWrapper {...props}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></IconWrapper>;
@@ -81,6 +147,8 @@
       const RefreshCw = (props) => <IconWrapper {...props}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconWrapper>;
       const Trophy = (props) => <IconWrapper {...props}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></IconWrapper>;
       const AlertTriangle = (props) => <IconWrapper {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></IconWrapper>;
+      const Volume2 = (props) => <IconWrapper {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></IconWrapper>;
+      const VolumeX = (props) => <IconWrapper {...props}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" x2="17" y1="9" y2="15"/><line x1="17" x2="23" y1="9" y2="15"/></IconWrapper>;
 
       // --- CONSTANTS ---
       const BOARD_SIZE = 15;
@@ -262,17 +330,26 @@
         );
       };
 
-      const GameControls = ({ currentPlayer, stats, onReset, isDarkMode, onToggleTheme }) => {
+      const GameControls = ({ currentPlayer, stats, onReset, isDarkMode, onToggleTheme, isSoundOn, onToggleSound }) => {
         return (
           <div className="flex flex-col gap-4 sm:gap-6 w-full lg:w-72">
-            <div className="flex justify-between items-center lg:justify-end">
+            <div className="flex justify-between items-center lg:justify-end gap-2">
               <span className="lg:hidden text-sm font-semibold text-slate-400 uppercase tracking-wider">Cài đặt</span>
-              <button 
-                onClick={onToggleTheme}
-                className="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
-              >
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={onToggleSound}
+                  className="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                  title={isSoundOn ? "Tắt âm thanh" : "Bật âm thanh"}
+                >
+                  {isSoundOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+                </button>
+                <button 
+                  onClick={onToggleTheme}
+                  className="p-2 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all"
+                >
+                  {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                </button>
+              </div>
             </div>
 
             <div className="bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 transition-colors">
@@ -310,7 +387,7 @@
             <button onClick={onReset} className="w-full py-3 sm:py-4 bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white rounded-xl font-semibold shadow-lg shadow-slate-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base">
               <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" /> Ván mới
             </button>
-            <div className="text-center text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1 sm:mt-2">Caro Master AI v1.2</div>
+            <div className="text-center text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 mt-1 sm:mt-2">Caro Master AI v1.3</div>
           </div>
         );
       };
@@ -347,8 +424,15 @@
         const [isBotThinking, setIsBotThinking] = useState(false);
         const [stats, setStats] = useState({ wins: 0, losses: 0, draws: 0 });
         const [isDarkMode, setIsDarkMode] = useState(false);
+        const [isSoundOn, setIsSoundOn] = useState(true);
 
         const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
+        const toggleSound = useCallback(() => {
+          // Kích hoạt AudioContext khi người dùng tương tác lần đầu để tránh bị trình duyệt chặn
+          initAudio();
+          setIsSoundOn(prev => !prev);
+        }, []);
+
         const resetGame = useCallback(() => {
           setBoard(createEmptyBoard());
           setCurrentPlayer(HUMAN_PLAYER);
@@ -366,19 +450,21 @@
               if (player === BOT_PLAYER) return { ...prev, losses: prev.losses + 1 };
               return { ...prev, draws: prev.draws + 1 };
           });
-        }, []);
+          if (isSoundOn) playSound('WIN');
+        }, [isSoundOn]);
 
-        // REFACTORED: Clean handleMove without side-effects in state updater
         const handleMove = useCallback((row, col, player) => {
-          // 1. Create new board
+          // Play Sound based on player
+          if (isSoundOn) {
+            playSound(player === HUMAN_PLAYER ? 'MOVE_X' : 'MOVE_O');
+          }
+
           const newBoard = board.map(r => [...r]);
           newBoard[row][col] = player;
           
-          // 2. Update state
           setBoard(newBoard);
           setLastMove({ row, col });
 
-          // 3. Check win logic on the new board
           const winPath = checkWin(newBoard, { row, col }, player);
           if (winPath) {
             handleWin(player, winPath);
@@ -387,7 +473,7 @@
               if (isDraw) handleWin('DRAW');
               else setCurrentPlayer(player === Player.X ? Player.O : Player.X);
           }
-        }, [board, handleWin]);
+        }, [board, handleWin, isSoundOn]);
 
         const onHumanClick = (row, col) => {
           if (winner || isBotThinking || board[row][col] !== null || currentPlayer !== HUMAN_PLAYER) return;
@@ -418,7 +504,17 @@
                 <div className="flex-1 w-full flex justify-center order-1 lg:order-1 overflow-x-auto overflow-y-hidden pb-2 lg:pb-0 scrollbar-hide">
                     <div className="min-w-fit px-1"><Board board={board} onCellClick={onHumanClick} lastMove={lastMove} winningCells={winningCells} isBotTurn={isBotThinking} isGameOver={!!winner} /></div>
                 </div>
-                <div className="w-full max-w-md lg:w-auto order-2 lg:order-2 flex justify-center px-2 sm:px-0"><GameControls currentPlayer={currentPlayer} stats={stats} onReset={resetGame} isDarkMode={isDarkMode} onToggleTheme={toggleTheme} /></div>
+                <div className="w-full max-w-md lg:w-auto order-2 lg:order-2 flex justify-center px-2 sm:px-0">
+                  <GameControls 
+                    currentPlayer={currentPlayer} 
+                    stats={stats} 
+                    onReset={resetGame} 
+                    isDarkMode={isDarkMode} 
+                    onToggleTheme={toggleTheme}
+                    isSoundOn={isSoundOn}
+                    onToggleSound={toggleSound}
+                  />
+                </div>
               </div>
               <WinnerModal isOpen={!!winner} winner={winner} onReset={resetGame} />
             </div>
@@ -429,6 +525,5 @@
       const root = ReactDOM.createRoot(document.getElementById('root'));
       root.render(<App />);
     </script>
-  <script type="module" src="/index.tsx"></script>
-</body>
+  </body>
 </html>
